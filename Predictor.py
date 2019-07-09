@@ -8,13 +8,14 @@ logger = Logger(logger_name)
 
 manager = DataManager(logger_name)
 
-manager.predict_lineup()
+# manager.predict_lineup()
+manager.execute_lp_solver()
 
 # manager.current_day_functions()
-#
+
 # manager.transfer_active_status()
 
-# manager.get_lp_solution()
+# manager.get_lp_solution_test()
 
 
 

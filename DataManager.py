@@ -772,7 +772,7 @@ class DataManager:
                         player['primaryNumber'] if 'primaryNumber' in player else None,
                         player['currentAge'] if 'currentAge' in player else None,
                         height_int,
-                        player['weight'],
+                        player['weight'] if 'weight' in player else None,
                         player['alternateCaptain'] if 'alternateCaptain' in player else None,
                         player['captain'] if 'captain' in player else None,
                         player['rookie'],
@@ -846,7 +846,7 @@ class DataManager:
                         player['primaryNumber'] if 'primaryNumber' in player else None,
                         player['currentAge'] if 'currentAge' in player else None,
                         height_int,
-                        player['weight'],
+                        player['weight'] if 'weight' in player else None,
                         player['alternateCaptain'] if 'alternateCaptain' in player else None,
                         player['captain'] if 'captain' in player else None,
                         player['rookie'],
@@ -1308,10 +1308,13 @@ class DataManager:
             self.db_manager.insert('WEB_FD_PROJECTED_DATA',
                                    insert_projected_values)
 
-    def predict_lineup(self):
+    def prepare_lp_values(self):
+        test_date_string = '2019-01-14'
+        test_date = datetime(2019, 1, 14)
         current_tournament = self.db_manager.select('WEB_FD_TOURNAMENT',
                                                     where_clause='DATE = \'' +
-                                                                 datetime.now().strftime('%Y-%m-%d') +
+                                                                 # datetime.now().strftime('%Y-%m-%d') +
+                                                                 test_date_string +
                                                                  '\'',
                                                     single=True)
 
@@ -1324,6 +1327,8 @@ class DataManager:
                                                single=True)
 
         lp_variables = []
+
+        insert_sol_lp_values = []
 
         for projected_player in projected_players:
 
@@ -1354,7 +1359,8 @@ class DataManager:
                 nhl_game_id = None
 
                 for nhl_game in nhl_season_games:
-                    if nhl_game['DATE_TIME'].date() == datetime.now().date() and \
+                    # if nhl_game['DATE_TIME'].date() == datetime.now().date() and \
+                    if nhl_game['DATE_TIME'].date() == test_date.date() and \
                        (nhl_game['HOME_ID'] == nhl_team_id['NHL_TEAM_ID'] or
                             nhl_game['AWAY_ID'] == nhl_team_id['NHL_TEAM_ID']):
                         nhl_game_id = nhl_game['GAME_ID']
@@ -1455,7 +1461,8 @@ class DataManager:
                     print("IN")
 
                 for nhl_game in nhl_season_games:
-                    if nhl_game['DATE_TIME'].date() == datetime.now().date() and \
+                    # if nhl_game['DATE_TIME'].date() == datetime.now().date() and \
+                    if nhl_game['DATE_TIME'].date() == test_date.date() and \
                        (nhl_game['HOME_ID'] == nhl_team_id['NHL_TEAM_ID'] or
                             nhl_game['AWAY_ID'] == nhl_team_id['NHL_TEAM_ID']):
                         nhl_game_id = nhl_game['GAME_ID']
@@ -1523,6 +1530,46 @@ class DataManager:
                         'SALARY': player_salary
                     })
 
+        for lp_variable in lp_variables:
+            insert_sol_lp_values.append((
+                lp_variable['FD_PLAYER_ID'],
+                lp_variable['POSITION'],
+                lp_variable['PREDICTION'],
+                lp_variable['SALARY'] / 100,
+                lp_variable['PREDICTION'] / (lp_variable['SALARY'] / 100)
+            ))
+
+        self.db_manager.delete('SOL_LP_VALUES', ())
+
+        self.db_manager.insert('SOL_LP_VALUES', insert_sol_lp_values)
+
+    def execute_lp_solver(self):
+
+        db_centers = self.db_manager.select('SOL_LP_VALUES',
+                                            where_clause='POSITION = \'C\'')
+
+        db_centers = sorted(db_centers, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+
+        db_wingers = self.db_manager.select('SOL_LP_VALUES',
+                                            where_clause='POSITION = \'W\'')
+
+        db_wingers = sorted(db_wingers, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+
+        db_defense = self.db_manager.select('SOL_LP_VALUES',
+                                            where_clause='POSITION = \'D\'')
+
+        db_defense = sorted(db_defense, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+
+        db_goalies = self.db_manager.select('SOL_LP_VALUES',
+                                            where_clause='POSITION = \'G\'')
+
+        db_goalies = sorted(db_goalies, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+
+        CENTERS = 2
+        WINGERS = 4
+        DEFENSE = 2
+        GOALIES = 1
+
         objective_values = []
         salary_values = []
         center_values = []
@@ -1530,29 +1577,63 @@ class DataManager:
         defense_values = []
         goalie_values = []
 
-        for lp_variable in lp_variables:
-            objective_values.append(lp_variable['PREDICTION'])
-            salary_values.append(lp_variable['SALARY'])
-            if lp_variable['POSITION'] == 'C':
+        for copies in range(3):
+            for center_count in range(CENTERS):
+                center = db_centers[center_count * copies]
+                objective_values.append(center['PREDICTED_VALUE'])
+                salary_values.append(center['SALARY_100S'])
                 center_values.append(1)
                 winger_values.append(0)
                 defense_values.append(0)
                 goalie_values.append(0)
-            elif lp_variable['POSITION'] == 'W':
+            for winger_count in range(WINGERS):
+                winger = db_wingers[winger_count * copies]
+                objective_values.append(winger['PREDICTED_VALUE'])
+                salary_values.append(winger['SALARY_100S'])
                 center_values.append(0)
                 winger_values.append(1)
                 defense_values.append(0)
                 goalie_values.append(0)
-            elif lp_variable['POSITION'] == 'D':
+            for defense_count in range(DEFENSE):
+                defense_player = db_defense[defense_count * copies]
+                objective_values.append(defense_player['PREDICTED_VALUE'])
+                salary_values.append(defense_player['SALARY_100S'])
                 center_values.append(0)
                 winger_values.append(0)
                 defense_values.append(1)
                 goalie_values.append(0)
-            elif lp_variable['POSITION'] == 'G':
+            for goalie_count in range(GOALIES):
+                goalie = db_goalies[goalie_count * copies]
+                objective_values.append(goalie['PREDICTED_VALUE'])
+                salary_values.append(goalie['SALARY_100S'])
                 center_values.append(0)
                 winger_values.append(0)
                 defense_values.append(0)
                 goalie_values.append(1)
+
+        # for lp_variable in lp_variables:
+        #     objective_values.append(lp_variable['PREDICTION'])
+        #     salary_values.append(lp_variable['SALARY'])
+        #     if lp_variable['POSITION'] == 'C':
+        #         center_values.append(1)
+        #         winger_values.append(0)
+        #         defense_values.append(0)
+        #         goalie_values.append(0)
+        #     elif lp_variable['POSITION'] == 'W':
+        #         center_values.append(0)
+        #         winger_values.append(1)
+        #         defense_values.append(0)
+        #         goalie_values.append(0)
+        #     elif lp_variable['POSITION'] == 'D':
+        #         center_values.append(0)
+        #         winger_values.append(0)
+        #         defense_values.append(1)
+        #         goalie_values.append(0)
+        #     elif lp_variable['POSITION'] == 'G':
+        #         center_values.append(0)
+        #         winger_values.append(0)
+        #         defense_values.append(0)
+        #         goalie_values.append(1)
 
         self.ip_solver.set_objective(objective_values)
         self.ip_solver.add_constraint(salary_values, 55000)
@@ -1560,15 +1641,22 @@ class DataManager:
         self.ip_solver.add_constraint(winger_values, 4, True)
         self.ip_solver.add_constraint(defense_values, 2, True)
         self.ip_solver.add_constraint(goalie_values, 1, True)
+        # salary_values.sort()
         solution = self.ip_solver.solve()
 
-        for i in range(len(lp_variables)):
-            if solution[i] == 1:
-                print(lp_variables[i]['FD_PLAYER_ID'])
+        # for i in range(len(lp_variables)):
+        #     if solution[i] == 1:
+        #         print(lp_variables[i]['FD_PLAYER_ID'])
 
         self.logger.info("DONE")
 
-    def get_lp_solution(self):
+    def predict_lineup(self):
+
+        self.prepare_lp_values()
+
+        self.execute_lp_solver()
+
+    def get_lp_solution_test(self):
         self.ip_solver.set_objective((-8, -2, -4, -7, -5))
         self.ip_solver.add_constraint((-3, -3, 1, 2, 3), -2, True)
         self.ip_solver.add_constraint((-5, -3, -2, -1, 1), -4)

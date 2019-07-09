@@ -63,9 +63,12 @@ class IntegerProgrammingSolver:
                 if not found:
                     current_values.append(0)
 
-            feasible = True
-            for constraint in self.constraints:
-                feasible &= constraint.check_feasible(current_values)
+            feasible = sum(current_values) == 9
+            if feasible:
+                for constraint in self.constraints:
+                    if not constraint.check_feasible(current_values):
+                        feasible = False
+                        break
 
             if feasible:
                 current_result = self.objective_extra
@@ -76,9 +79,12 @@ class IntegerProgrammingSolver:
                     best_result = current_result
                     best_result_values = current_values
             else:
-                feasible_children = True
-                for constraint in self.constraints:
-                    feasible_children &= constraint.check_feasible_children(fixed_list)
+                feasible_children = sum(current_values) < 9
+                if feasible_children:
+                    for constraint in self.constraints:
+                        if not constraint.check_feasible_children(fixed_list):
+                            feasible_children = False
+                            break
 
                 if feasible_children:
                     variable_to_be_fixed = None
@@ -91,25 +97,13 @@ class IntegerProgrammingSolver:
                                 break
 
                         if not found:
+                            # variable_to_be_fixed = i
                             variable_infeasibilities = 0
                             for constraint in self.constraints:
-                                variable_infeasibilities += constraint.check_infeasabilities(fixed_list, i)
+                                variable_infeasibilities += constraint.check_infeasabilities(fixed_list)
                             if least_variable_infeasibilities is None or variable_infeasibilities < least_variable_infeasibilities:
                                 least_variable_infeasibilities = variable_infeasibilities
                                 variable_to_be_fixed = i
-
-                    # value_to_be_fixed = None
-                    # for i in range(len(self.objective_values)):
-                    #     found = False
-                    #     for fixed in fixed_list:
-                    #         if i == fixed[0]:
-                    #             found = True
-                    #             break
-                    #
-                    #     if not found and
-                    #     (variable_to_be_fixed is None or self.objective_values[i] > value_to_be_fixed):
-                    #         variable_to_be_fixed = i
-                    #         value_to_be_fixed = self.objective_values[i]
 
                     if variable_to_be_fixed is not None:
                         zero_node = [(variable_to_be_fixed, 0)]
@@ -169,7 +163,7 @@ class IntegerProgrammingConstraint:
 
         return current_result <= self.rhs
 
-    def check_infeasabilities(self, fixed_values, check_index):
+    def check_infeasabilities(self, fixed_values):
         current_result = 0
         for i in range(len(self.values)):
             found = False

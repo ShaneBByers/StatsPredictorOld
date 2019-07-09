@@ -17,6 +17,7 @@ class DatabaseConnector:
         self.select_statement = ""
         self.insert_statement = ""
         self.update_statement = ""
+        self.delete_statement = ""
         # logging.info("DatabaseConnector created")
 
     def create_select(self, table, cols=(), where_clause=()):
@@ -133,6 +134,29 @@ class DatabaseConnector:
     def execute_update(self, commit=True):
         row_count = self.cursor.execute(self.update_statement)
         self.logger.info("Executed statement: '" + self.update_statement + "' Row Count: " + str(row_count))
+        if commit:
+            self.commit_execute()
+        return row_count
+
+    def create_delete(self, table, where_clause):
+        self.delete_statement = "DELETE FROM "
+        self.delete_statement += table
+        if isinstance(where_clause, str):
+            self.delete_statement += " WHERE "
+            self.delete_statement += where_clause
+        elif len(where_clause) != 0:
+            self.delete_statement += "WHERE ("
+            for where in where_clause[:-1]:
+                self.delete_statement += where + " AND "
+            else:
+                self.delete_statement += where_clause[-1]
+            self.delete_statement += ")"
+        self.delete_statement += ";"
+        self.logger.info("Created statement: '" + self.delete_statement + "'")
+
+    def execute_delete(self, commit=True):
+        row_count = self.cursor.execute(self.delete_statement)
+        self.logger.info("Executed statement: '" + self.delete_statement + "' Row Count: " + str(row_count))
         if commit:
             self.commit_execute()
         return row_count

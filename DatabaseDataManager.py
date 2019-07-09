@@ -33,5 +33,9 @@ class DatabaseDataManager:
         if commit:
             self.connector.commit_execute()
 
+    def delete(self, table, where_clause, commit=True):
+        self.connector.create_delete(table, where_clause)
+        return self.connector.execute_delete()
+
     def commit(self):
         self.connector.commit_execute()
