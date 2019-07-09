@@ -1548,22 +1548,23 @@ class DataManager:
         db_centers = self.db_manager.select('SOL_LP_VALUES',
                                             where_clause='POSITION = \'C\'')
 
-        db_centers = sorted(db_centers, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+        # db_centers = sorted(db_centers, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+        db_centers = sorted(db_centers, key=lambda k: k['SALARY_100S'])
 
         db_wingers = self.db_manager.select('SOL_LP_VALUES',
                                             where_clause='POSITION = \'W\'')
 
-        db_wingers = sorted(db_wingers, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+        db_wingers = sorted(db_wingers, key=lambda k: k['SALARY_100S'])
 
         db_defense = self.db_manager.select('SOL_LP_VALUES',
                                             where_clause='POSITION = \'D\'')
 
-        db_defense = sorted(db_defense, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+        db_defense = sorted(db_defense, key=lambda k: k['SALARY_100S'])
 
         db_goalies = self.db_manager.select('SOL_LP_VALUES',
                                             where_clause='POSITION = \'G\'')
 
-        db_goalies = sorted(db_goalies, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
+        db_goalies = sorted(db_goalies, key=lambda k: k['SALARY_100S'])
 
         CENTERS = 2
         WINGERS = 4

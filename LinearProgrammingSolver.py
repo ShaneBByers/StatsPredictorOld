@@ -53,11 +53,11 @@ class IntegerProgrammingSolver:
             fixed_list = unfathomed_list.pop(0)
 
             current_values = []
-            for i in range(len(self.objective_values)):
+            for i, _ in enumerate(self.objective_values):
                 found = False
-                for fixed_index in range(len(fixed_list)):
-                    if i == fixed_list[fixed_index][0]:
-                        current_values.append(fixed_list[fixed_index][1])
+                for fixed_list_item in fixed_list:
+                    if i == fixed_list_item[0]:
+                        current_values.append(fixed_list_item[1])
                         found = True
                         break
                 if not found:
@@ -72,8 +72,8 @@ class IntegerProgrammingSolver:
 
             if feasible:
                 current_result = self.objective_extra
-                for i in range(len(self.objective_values)):
-                    current_result += self.objective_values[i] * current_values[i]
+                for i, objective_values_item in enumerate(self.objective_values):
+                    current_result += objective_values_item * current_values[i]
 
                 if best_result is None or current_result > best_result:
                     best_result = current_result
@@ -89,7 +89,7 @@ class IntegerProgrammingSolver:
                 if feasible_children:
                     variable_to_be_fixed = None
                     least_variable_infeasibilities = None
-                    for i in range(len(self.objective_values)):
+                    for i, _ in enumerate(self.objective_values):
                         found = False
                         for fixed in fixed_list:
                             if i == fixed[0]:
@@ -113,14 +113,18 @@ class IntegerProgrammingSolver:
                         for fixed in fixed_list:
                             zero_node.append(fixed)
                             one_node.append(fixed)
+                        # Fix all other Centers to 0 if 2 Centers are currently fixed to 1
+                        # Pass in Center indeces to IP Solver
+                        # If number of Centers required = number of Centers not fixed, fix both to 1
+                        # Don't add these to fixed list. Just append it to zero_/one_node and add it to unfathomed.
 
                         unfathomed_list.append(zero_node)
                         unfathomed_list.append(one_node)
 
-        for i in range(len(best_result_values)):
+        for i, best_result_values_item in enumerate(best_result_values):
             for substitute_index in self.substitute_values:
                 if i == substitute_index:
-                    best_result_values[i] = 1 - best_result_values[i]
+                    best_result_values_item = 1 - best_result_values_item
 
         return {'VALUES': best_result_values,
                 'RESULT': best_result}
