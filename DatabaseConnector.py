@@ -6,10 +6,10 @@ class DatabaseConnector:
 
     def __init__(self, logger_name):
         self.database = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            passwd="password",
-            database="PREDICTOR"
+            host="REDACTED HOST",
+            user="REDACTED USER",
+            passwd="REDACTED PASSWORD",
+            database="REDACTED DATABASE"
         )
         self.logger = logging.getLogger(logger_name)
         self.cursor = self.database.cursor(dictionary=True)
