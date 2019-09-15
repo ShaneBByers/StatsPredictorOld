@@ -1548,6 +1548,7 @@ class DataManager:
         db_centers = self.db_manager.select('SOL_LP_VALUES',
                                             where_clause='POSITION = \'C\'')
 
+        # db_centers = sorted(db_centers, key=lambda k: k['SALARY_100S'], reverse=True)
         # db_centers = sorted(db_centers, key=lambda k: k['POINTS_PER_DOLLAR'], reverse=True)
         db_centers = sorted(db_centers, key=lambda k: k['SALARY_100S'])
 
@@ -1572,15 +1573,22 @@ class DataManager:
         GOALIES = 1
 
         objective_values = []
+        restrictions = {}
         salary_values = []
         center_values = []
         winger_values = []
         defense_values = []
         goalie_values = []
 
+        restrictions['C'] = (2, [])
+        restrictions['W'] = (4, [])
+        restrictions['D'] = (2, [])
+        restrictions['G'] = (1, [])
+
         for copies in range(3):
             for center_count in range(CENTERS):
                 center = db_centers[center_count * copies]
+                restrictions['C'][1].append(len(objective_values))
                 objective_values.append(center['PREDICTED_VALUE'])
                 salary_values.append(center['SALARY_100S'])
                 center_values.append(1)
@@ -1589,6 +1597,7 @@ class DataManager:
                 goalie_values.append(0)
             for winger_count in range(WINGERS):
                 winger = db_wingers[winger_count * copies]
+                restrictions['W'][1].append(len(objective_values))
                 objective_values.append(winger['PREDICTED_VALUE'])
                 salary_values.append(winger['SALARY_100S'])
                 center_values.append(0)
@@ -1597,6 +1606,7 @@ class DataManager:
                 goalie_values.append(0)
             for defense_count in range(DEFENSE):
                 defense_player = db_defense[defense_count * copies]
+                restrictions['D'][1].append(len(objective_values))
                 objective_values.append(defense_player['PREDICTED_VALUE'])
                 salary_values.append(defense_player['SALARY_100S'])
                 center_values.append(0)
@@ -1605,6 +1615,7 @@ class DataManager:
                 goalie_values.append(0)
             for goalie_count in range(GOALIES):
                 goalie = db_goalies[goalie_count * copies]
+                restrictions['G'][1].append(len(objective_values))
                 objective_values.append(goalie['PREDICTED_VALUE'])
                 salary_values.append(goalie['SALARY_100S'])
                 center_values.append(0)
@@ -1636,8 +1647,8 @@ class DataManager:
         #         defense_values.append(0)
         #         goalie_values.append(1)
 
-        self.ip_solver.set_objective(objective_values)
-        self.ip_solver.add_constraint(salary_values, 55000)
+        self.ip_solver.set_objective(objective_values, restrictions)
+        self.ip_solver.add_constraint(salary_values, 550)
         self.ip_solver.add_constraint(center_values, 2, True)
         self.ip_solver.add_constraint(winger_values, 4, True)
         self.ip_solver.add_constraint(defense_values, 2, True)

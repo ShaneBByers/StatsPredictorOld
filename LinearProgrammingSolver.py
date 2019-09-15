@@ -1,4 +1,5 @@
 import logging
+import time
 
 
 class IntegerProgrammingSolver:
@@ -8,11 +9,13 @@ class IntegerProgrammingSolver:
         self.objective_extra = 0
         self.substitute_values = []
         self.constraints = []
+        self.restrictions = {}
 
         self.logger = logging.getLogger(logger_name)
 
-    def set_objective(self, values):
+    def set_objective(self, values, restrictions={}):
         self.objective_values = values
+        self.restrictions = restrictions
 
     def add_constraint(self, values, rhs, is_equals=False):
         new_constraint = IntegerProgrammingConstraint()
@@ -35,22 +38,37 @@ class IntegerProgrammingSolver:
                 self.substitute_values.append(i)
                 self.objective_extra += self.objective_values[i]
                 new_objective_values.append(-1 * self.objective_values[i])
-                for constraint in self.constraints:
-                    constraint.substitute_value(i)
+                # for constraint in self.constraints:
+                #     constraint.substitute_value(i)
             else:
                 new_objective_values.append(self.objective_values[i])
         self.objective_values = new_objective_values
 
     def solve(self):
+        self.logger.info("Pre-Fixed Objective Values: " + str([[str(n) for n in self.objective_values]]))
+        for i, constraint in enumerate(self.constraints):
+            self.logger.info("Constraint " + str(i + 1) + ": " + constraint.to_string())
         self.fix_objective_values()
+        self.logger.info("Post-Fixed Objective Values: " + str([[str(n) for n in self.objective_values]]))
+        for i, constraint in enumerate(self.constraints):
+            self.logger.info("Constraint " + str(i + 1) + ": " + constraint.to_string())
         unfathomed_list = []
         best_result = None
         best_result_values = []
+        max_unfathomed_size = 0
+        loop_counter = 0
 
         unfathomed_list.append([])
 
+        function_start = time.time()
+
         while len(unfathomed_list) > 0:
+            start = time.time()
             fixed_list = unfathomed_list.pop(0)
+            # self.logger.info("Fixed List: " + str(fixed_list))
+            # self.logger.info("Unfathomed Size: " + str(len(unfathomed_list)) + " Fixed List Size: " + str(len(fixed_list)))
+            max_unfathomed_size = max(max_unfathomed_size, len(unfathomed_list))
+            loop_counter += 1
 
             current_values = []
             for i, _ in enumerate(self.objective_values):
@@ -63,21 +81,20 @@ class IntegerProgrammingSolver:
                 if not found:
                     current_values.append(0)
 
-            feasible = sum(current_values) == 9
-            if feasible:
-                for constraint in self.constraints:
-                    if not constraint.check_feasible(current_values):
-                        feasible = False
-                        break
+            feasible = True
+            for constraint in self.constraints:
+                feasible &= constraint.check_feasible(current_values)
 
             if feasible:
                 current_result = self.objective_extra
+                # self.logger.info("Found Feasible with Result: " + str(current_result))
                 for i, objective_values_item in enumerate(self.objective_values):
                     current_result += objective_values_item * current_values[i]
 
                 if best_result is None or current_result > best_result:
                     best_result = current_result
                     best_result_values = current_values
+                    self.logger.info("Found New Best Result: " + str(best_result))
             else:
                 feasible_children = sum(current_values) < 9
                 if feasible_children:
@@ -113,13 +130,68 @@ class IntegerProgrammingSolver:
                         for fixed in fixed_list:
                             zero_node.append(fixed)
                             one_node.append(fixed)
-                        # Fix all other Centers to 0 if 2 Centers are currently fixed to 1
-                        # Pass in Center indeces to IP Solver
-                        # If number of Centers required = number of Centers not fixed, fix both to 1
-                        # Don't add these to fixed list. Just append it to zero_/one_node and add it to unfathomed.
+
+                        # center_count = {0: [], 1: []}
+                        # winger_count = {0: [], 1: []}
+                        # defense_count = {0: [], 1: []}
+                        # goalie_count = {0: [], 1: []}
+                        # for node in one_node:
+                        #     center_restriction = self.restrictions['C']
+                        #     for center in center_restriction[1]:
+                        #         if node[0] == center:
+                        #             center_count[node[1]].append(center)
+                        #             break
+                        #     winger_restriction = self.restrictions['W']
+                        #     for winger in winger_restriction[1]:
+                        #         if node[0] == winger:
+                        #             winger_count[node[1]] += 1
+                        #             break
+                        #     defense_restriction = self.restrictions['D']
+                        #     for defense in defense_restriction[1]:
+                        #         if node[0] == defense:
+                        #             defense_count[node[1]] += 1
+                        #             break
+                        #     goalie_restriction = self.restrictions['G']
+                        #     for goalie in goalie_restriction[1]:
+                        #         if node[0] == goalie:
+                        #             goalie_count[node[1]] += 1
+                        #             break
+
+                        for restriction_key, restriction_tuple in self.restrictions.items():
+                            if variable_to_be_fixed in restriction_tuple[1]:
+                                counters = {0: 0, 1: 0}
+                                for fixed_key, fixed_value in fixed_list:
+                                    if fixed_key in restriction_tuple[1]:
+                                        counters[fixed_value] += 1
+                                if counters[0] == len(restriction_tuple[1]) - restriction_tuple[0] - 1:
+                                    for restriction_value in restriction_tuple[1]:
+                                        found = restriction_value == variable_to_be_fixed
+                                        for fixed_key, fixed_value in fixed_list:
+                                            if fixed_key == restriction_value:
+                                                found = True
+                                                break
+                                        if not found:
+                                            zero_node.append((restriction_value, 1))
+                                if counters[1] == restriction_tuple[0] - 1:
+                                    for restriction_value in restriction_tuple[1]:
+                                        found = restriction_value == variable_to_be_fixed
+                                        for fixed_key, fixed_value in fixed_list:
+                                            if fixed_key == restriction_value:
+                                                found = True
+                                                break
+                                        if not found:
+                                            one_node.append((restriction_value, 0))
+                                break
 
                         unfathomed_list.append(zero_node)
                         unfathomed_list.append(one_node)
+            end = time.time()
+            self.logger.info("Single Loop Time: " + str(end - start))
+
+        function_end = time.time()
+        self.logger.info("Max Unfathomed Size: " + str(max_unfathomed_size))
+        self.logger.info("Loop Count: " + str(loop_counter))
+        self.logger.info("Function Time: " + str(function_end - function_start))
 
         for i, best_result_values_item in enumerate(best_result_values):
             for substitute_index in self.substitute_values:
@@ -135,6 +207,13 @@ class IntegerProgrammingConstraint:
     def __init__(self):
         self.values = ()
         self.rhs = None
+
+    def to_string(self):
+        return_string = ""
+        for i, value in enumerate(self.values):
+            return_string += str(value) + "*x(" + str(i) + ") "
+        return_string += "= " + str(self.rhs)
+        return return_string
 
     def substitute_value(self, sub_index):
         new_values = []
