@@ -9,9 +9,9 @@ class FileManager:
     def __init__(self, logger_name):
         self.logger = logging.getLogger(logger_name)
         self.salary_info = {}
-        self.download_source = "/Users/shanebyers/Downloads/"
-        self.download_destination = "/Users/shanebyers/PycharmProjects/StatsPredictor/Downloaded_Files/"
-        self.parsed_destination = "/Users/shanebyers/PycharmProjects/StatsPredictor/Parsed_Files/"
+        self.download_source = "REDACTED DOWNLOAD SOURCE"
+        self.download_destination = "REDACTED DOWNLOAD DESTINATION"
+        self.parsed_destination = "REDACTED PARSED DESTINATION"
 
     def transfer_file(self, file_name):
         source = self.download_source

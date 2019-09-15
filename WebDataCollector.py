@@ -101,8 +101,8 @@ class WebDataCollector:
         username = browser.find_element_by_id("forms.login.email")  # username form field
         password = browser.find_element_by_id("forms.login.password")  # password form field
 
-        username.send_keys("shanebbyers@gmail.com")
-        password.send_keys("Rocket66")
+        username.send_keys("REDACTED EMAIL")
+        password.send_keys("REDACTED PASSWORD")
 
         submit_button = browser.find_element_by_id("forms.login.submit")
         submit_button.click()
@@ -164,8 +164,8 @@ class WebDataCollector:
         username = browser.find_element_by_id("forms.login.email")  # username form field
         password = browser.find_element_by_id("forms.login.password")  # password form field
 
-        username.send_keys("shanebbyers@gmail.com")
-        password.send_keys("Rocket66")
+        username.send_keys("REDACTED EMAIL")
+        password.send_keys("REDACTED PASSWORD")
 
         submit_button = browser.find_element_by_id("forms.login.submit")
         submit_button.click()
